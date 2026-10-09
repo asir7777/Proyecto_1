@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escapa de la Cueva 3D - Cien Metros de Profundidad</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Montserrat', sans-serif;
+            user-select: none;
+        }
+
+        .hud-font {
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        /* Glassmorphism HUD Style */
+        .hud-panel {
+            background: rgba(10, 10, 12, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        }
+
+        /* Tactical Pulse Effect */
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 0.85; }
+            50% { opacity: 1; }
+        }
+        .animate-hud-pulse {
+            animation: pulse-subtle 2s infinite ease-in-out;
+        }
+
+        /* Slow Zoom Animation for Solicitud de Empleo */
+        @keyframes slowZoom {
+            0% {
+                transform: scale(1.0);
+            }
+            100% {
+                transform: scale(1.35);
+            }
+        }
+        .slow-zoom-active {
+            animation: slowZoom 5s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+            transform-origin: center center;
+        }
+
+        /* Exact Form Styling for Solicitud de Empleo */
+        .form-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid #000;
+            font-size: 0.65rem;
+            color: #000;
+            background-color: #fff;
+            line-height: 1.15;
+        }
+
+        .form-table td, .form-table th {
+            border: 1px solid #222;
+            padding: 2px 4px;
+            vertical-align: top;
+        }
+
+        .section-hdr {
+            background-color: #e2e2e2;
+            font-weight: 800;
+            font-style: italic;
+            font-size: 0.68rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #000;
+        }
+
+        .input-line {
+            border-bottom: 1px solid #000;
+            display: inline-block;
+            min-height: 11px;
+        }
+
+        .box-check {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border: 1px solid #000;
+            margin-right: 2px;
+            vertical-align: middle;
+        }
+
+        .curp-box {
+            display: inline-block;
+            width: 11px;
+            height: 13px;
+            border: 1px solid #333;
+            margin-right: 1px;
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #777;
+        }
+    </style>
+</head>
+<body class="relative w-full h-full bg-black text-white">
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container" class="absolute inset-0 w-full h-full cursor-pointer"></div>
+
+    <!-- Center Aim Reticle -->
+    <div id="crosshair" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 opacity-0 transition-opacity duration-200">
+        <div class="w-3 h-3 border border-amber-400/60 rounded-full flex items-center justify-center">
+            <div class="w-1 h-1 bg-amber-300 rounded-full"></div>
+        </div>
+    </div>
+
+    <!-- In-Game Survival HUD -->
+    <div id="game-hud" class="absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-4 sm:p-6 opacity-0 transition-opacity duration-300">
+        
+        <!-- HUD Header Row: Depth Meter & Status -->
+        <div class="flex items-start justify-between w-full max-w-5xl mx-auto">
+            
+            <!-- Left Panel: Altimeter / Depth Indicator -->
+            <div class="hud-panel px-4 py-3 rounded-xl flex items-center space-x-4 border-l-4 border-amber-500">
+                <div class="flex flex-col">
+                    <span class="hud-font text-[10px] text-amber-400/90 tracking-widest uppercase font-bold">PROFUNDIDAD ACTUAL</span>
+                    <div class="flex items-baseline space-x-1">
+                        <span id="hud-depth" class="hud-font text-3xl sm:text-4xl font-extrabold text-white tracking-tight">450</span>
+                        <span class="hud-font text-lg text-amber-400 font-bold">m</span>
+                    </div>
+                </div>
+                <div class="h-10 w-[1px] bg-white/20"></div>
+                <div class="flex flex-col text-[10px] hud-font text-stone-300">
+                    <div class="flex items-center space-x-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block"></span>
+                        <span class="text-emerald-400 font-bold">ASCENSO ACTIVO</span>
+                    </div>
+                    <span class="mt-0.5 opacity-70">OBJETIVO: SUPERFICIE</span>
+                </div>
+            </div>
+
+            <!-- Right Panel: Gear & Oxygen Status -->
+            <div class="hud-panel px-4 py-3 rounded-xl flex flex-col space-y-2 min-w-[180px] sm:min-w-[210px] border-r-4 border-emerald-500">
+                <!-- Grip/Stamina Bar -->
+                <div>
+                    <div class="flex justify-between items-center text-[10px] hud-font mb-1">
+                        <span class="text-stone-300 font-bold">AGARRE / RESISTENCIA</span>
+                        <span id="hud-grip-pct" class="text-emerald-400 font-bold">98%</span>
+                    </div>
+                    <div class="w-full bg-stone-800/80 rounded-full h-1.5 overflow-hidden p-0.5 border border-white/10">
+                        <div id="hud-grip-bar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-300" style="width: 98%;"></div>
+                    </div>
+                </div>
+
+                <!-- Headlamp Battery -->
+                <div>
+                    <div class="flex justify-between items-center text-[10px] hud-font mb-1">
+                        <span class="text-stone-300 font-bold">LINTERNA FRONTAL</span>
+                        <span class="text-amber-400 font-bold">88%</span>
+                    </div>
+                    <div class="w-full bg-stone-800/80 rounded-full h-1.5 overflow-hidden p-0.5 border border-white/10">
+                        <div class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full" style="width: 88%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HUD Footer Row: Compass & Climbing Controls -->
+        <div class="w-full max-w-5xl mx-auto flex items-end justify-between">
+            <!-- Compass Bearing -->
+            <div class="hud-panel px-3 py-2 rounded-lg text-[11px] hud-font text-stone-300 flex items-center space-x-3">
+                <span class="text-amber-400 font-bold">BRÚJULA:</span>
+                <span>N 42° E</span>
+                <span class="text-stone-500">|</span>
+                <span class="text-stone-400">INCLINACIÓN: +82°</span>
+            </div>
+
+            <!-- Climbing Action Guide -->
+            <div id="climb-instructions" class="hud-panel px-5 py-2.5 rounded-full text-stone-200 text-xs font-semibold tracking-wide border border-amber-500/30 animate-hud-pulse">
+                Mantén <span class="bg-stone-800 text-amber-400 px-2 py-0.5 rounded border border-stone-600 font-bold font-mono">W</span> / <span class="bg-stone-800 text-amber-400 px-2 py-0.5 rounded border border-stone-600 font-bold font-mono">ESPACIO</span> / <span class="bg-stone-800 text-amber-400 px-2 py-0.5 rounded border border-stone-600 font-bold font-mono">CLIC</span> para trepar por la cuerda
+            </div>
+        </div>
+    </div>
+
+    <!-- Pointer Lock Re-engagement Prompt -->
+    <div id="pointer-prompt" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30 opacity-0 transition-opacity duration-300">
+        <div class="bg-stone-900/90 px-6 py-3 rounded-2xl border border-amber-500/50 text-amber-300 text-sm font-bold tracking-wide shadow-2xl animate-bounce text-center">
+            👆 HAZ CLIC EN LA PANTALLA PARA CONTROLAR LA CÁMARA
+        </div>
+    </div>
+
+    <!-- Start Modal Overlay -->
+    <div id="start-screen" class="absolute inset-0 bg-black/95 z-40 flex flex-col items-center justify-center p-6 text-center">
+        <div class="max-w-md w-full bg-stone-900 border border-stone-800 p-8 rounded-2xl shadow-2xl">
+            <div class="w-12 h-12 mx-auto mb-4 bg-amber-500/10 border border-amber-500/30 rounded-full flex items-center justify-center text-amber-400 text-2xl">
+                🧗
+            </div>
+            <h1 class="text-3xl font-black text-amber-500 mb-2 tracking-wider uppercase">ABISMO PROFUNDO</h1>
+            <p class="text-stone-300 text-xs mb-6 leading-relaxed">
+                Te encuentras atrapado a más de 400 metros bajo tierra. Usa la cuerda de escalada para ascender hacia la superficie. Mueve el ratón para mirar a tu alrededor.
+            </p>
+            <button id="start-btn" class="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white font-bold text-sm uppercase tracking-widest rounded-xl shadow-lg border border-amber-400/40 transform active:scale-95 transition">
+                COMENZAR ESCALADA
+            </button>
+        </div>
+    </div>
+
+    <!-- Fullscreen Pure White Instant Cut Job Application Document -->
+    <div id="job-screen" class="fixed inset-0 z-50 hidden bg-white text-black flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+        
+        <!-- Zoomable Document Wrapper -->
+        <div id="zoom-wrapper" class="w-full h-full flex items-center justify-center">
+            <div class="bg-white text-black w-full max-w-4xl max-h-[98vh] p-3 sm:p-5 overflow-y-auto custom-scroll flex flex-col justify-between border border-gray-300 shadow-2xl">
+                
+                <div>
+                    <!-- Form Top Header -->
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="w-[78%]">
+                            <div class="border-2 border-black p-2 text-center rounded-sm bg-gray-100">
+                                <h1 class="text-xl sm:text-2xl font-black tracking-wider uppercase text-black">SOLICITUD DE EMPLEO</h1>
+                                <p class="text-[8px] sm:text-[9px] font-bold text-gray-800 uppercase tracking-tight">LA INFORMACIÓN AQUÍ PROPORCIONADA SERÁ TRATADA CONFIDENCIALMENTE</p>
+                            </div>
+                            <div class="grid grid-cols-3 gap-1 mt-1 text-[9px]">
+                                <div class="border border-black p-1"><strong>Fecha:</strong> <span class="input-line w-20"></span></div>
+                                <div class="border border-black p-1"><strong>Puesto solicitado:</strong> <span class="input-line w-24"></span></div>
+                                <div class="border border-black p-1"><strong>Sueldo mensual deseado:</strong> <span class="input-line w-20"></span></div>
+                            </div>
+                        </div>
+                        <div class="w-[20%] flex justify-end">
+                            <div class="w-24 h-28 border-2 border-black flex flex-col items-center justify-center text-center p-1 bg-gray-50">
+                                <span class="text-[9px] font-bold text-gray-600 uppercase leading-tight">FOTOGRAFIA<br>RECIENTE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Datos Personales -->
+                    <table class="form-table mb-1">
+                        <thead>
+                            <tr><th colspan="4" class="section-hdr text-left">DATOS PERSONALES</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td width="30%"><strong>Apellido Paterno:</strong> <span class="input-line w-24"></span></td>
+                                <td width="30%"><strong>Apellido Materno:</strong> <span class="input-line w-24"></span></td>
+                                <td width="30%"><strong>Nombre (s):</strong> <span class="input-line w-24"></span></td>
+                                <td width="10%"><strong>Edad:</strong> <span class="input-line w-6"></span></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"><strong>Domicilio:</strong> <span class="input-line w-48"></span></td>
+                                <td><strong>Colonia:</strong> <span class="input-line w-28"></span></td>
+                                <td><strong>C. P.:</strong> <span class="input-line w-10"></span></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"><strong>Lugar de Nacimiento:</strong> <span class="input-line w-36"></span></td>
+                                <td><strong>Teléfono:</strong> <span class="input-line w-28"></span></td>
+                                <td>
+                                    <strong>Sexo:</strong><br>
+                                    <span class="box-check"></span> Masculino<br>
+                                    <span class="box-check"></span> Femenino
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"><strong>Vive con:</strong><br>
+                                    <span class="box-check"></span> Sus padres 
+                                    <span class="box-check ml-2"></span> Su familia 
+                                    <span class="box-check ml-2"></span> Parientes 
+                                    <span class="box-check ml-2"></span> Solo
+                                </td>
+                                <td><strong>Estatura:</strong> <span class="input-line w-12"></span></td>
+                                <td><strong>Peso:</strong> <span class="input-line w-12"></span></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"><strong>Personas que dependen de usted:</strong><br>
+                                    ___ Hijas ___ Cónyuge ___ Padres ___ Otros
+                                </td>
+                                <td colspan="2"><strong>Estado Civil:</strong><br>
+                                    <span class="box-check"></span> Soltero 
+                                    <span class="box-check ml-2"></span> Casado 
+                                    <span class="box-check ml-2"></span> Otro (explique) _________
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Section: Documentacion -->
+                    <table class="form-table mb-1">
+                        <thead>
+                            <tr><th colspan="4" class="section-hdr text-left">DOCUMENTACION</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td width="25%"><strong>Reg. Fed. De Contribuyentes:</strong></td>
+                                <td width="25%"><strong>Afiliación al Seguro Social No.:</strong></td>
+                                <td width="25%"><strong>Cartilla Servicio Militar No.:</strong></td>
+                                <td width="25%"><strong>Pasaporte No.:</strong></td>
+                            </tr>
+                            <tr>
+                                <td><strong>¿Tienes licencia de manejo?</strong><br>No <span class="box-check"></span> Si <span class="box-check"></span></td>
+                                <td><strong>Clase y número de licencia:</strong></td>
+                                <td><span class="text-[7px]">Siendo extranjero qué documento le permite trabajar en el país?</span></td>
+                                <td><strong>No. De Credencial de Elector:</strong></td>
+                            </tr>
+                            <tr>
+                                <td colspan="3">
+                                    <strong>Clave única de registro de población (CURP):</strong><br>
+                                    <div class="mt-1">
+                                        <span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span><span class="curp-box"></span>
+                                    </div>
+                                </td>
+                                <td><strong>No. De Afore:</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Section: Estado de Salud y Habitos -->
+                    <table class="form-table mb-1">
+                        <thead>
+                            <tr><th colspan="3" class="section-hdr text-left">ESTADO DE SALUD Y HABITOS PERSONALES</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td width="40%"><strong>¿Cómo considera su estado de salud actual?</strong><br>
+                                    Muy Bueno<span class="box-check ml-1"></span> Bueno<span class="box-check ml-1"></span> Regular<span class="box-check ml-1"></span> Malo<span class="box-check ml-1"></span>
+                                </td>
+                                <td width="30%"><strong>¿Padece alguna enfermedad crónica?</strong><br>
+                                    No <span class="box-check"></span> Si <span class="box-check"></span>
+                                </td>
+                                <td width="30%"><strong>¿Cuál es su pasatiempo favorito?</strong></td>
+                            </tr>
+                            <tr>
+                                <td><strong>¿Practica Ud. Algún deporte?</strong></td>
+                                <td colspan="2"><strong>¿Pertenece a algún Club Social o Deportivo?</strong></td>
+                            </tr>
+                            <tr>
+                                <td colspan="3"><strong>¿Cuál es su meta en la vida?</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Section: Datos Familiares -->
+                    <table class="form-table mb-1">
+                        <thead>
+                            <tr><th colspan="4" class="section-hdr text-left">DATOS FAMILIARES</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr class="font-bold text-center bg-gray-50">
+                                <td width="25%">NOMBRE</td>
+                                <td width="10%">VIVE / FINADO</td>
+                                <td width="40%">DOMICILIO</td>
+                                <td width="25%">OCUPACION</td>
+                            </tr>
+                            <tr><td>Padre</td><td></td><td></td><td></td></tr>
+                            <tr><td>Madre</td><td></td><td></td><td></td></tr>
+                            <tr><td>Esposo (a)</td><td></td><td></td><td></td></tr>
+                            <tr><td>Nombre y edades de los hijos</td><td></td><td></td><td></td></tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Section: Escolaridad -->
+                    <table class="form-table mb-2">
+                        <thead>
+                            <tr><th colspan="5" class="section-hdr text-left">ESCOLARIDAD</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr class="font-bold text-center bg-gray-50">
+                                <td width="25%">NOMBRE DE LA ESCUELA</td>
+                                <td width="35%">DOMICILIO</td>
+                                <td width="15%">PERIODO</td>
+                                <td width="10%">AÑOS</td>
+                                <td width="15%">TITULO RECIBIDO</td>
+                            </tr>
+                            <tr><td>Primaria</td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Secundaria</td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Preparatoria o equivalente</td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Profesional</td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Comercial u otras</td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td colspan="5"><strong>Estudios que está efectuando actualmente:</strong> Escuela ________ Horario ________ Curso o carrera ________ Grado ________</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- WEB AUDIO API SYSTEM ---
+        let audioCtx = null;
+        let ambientGainNode = null;
+        let isAudioCut = false;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Subterranean Cave Wind / Ambient Low Frequency Noise
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            const whiteNoise = audioCtx.createBufferSource();
+            whiteNoise.buffer = noiseBuffer;
+            whiteNoise.loop = true;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(140, audioCtx.currentTime);
+
+            ambientGainNode = audioCtx.createGain();
+            ambientGainNode.gain.setValueAtTime(0.35, audioCtx.currentTime);
+
+            whiteNoise.connect(filter);
+            filter.connect(ambientGainNode);
+            ambientGainNode.connect(audioCtx.destination);
+
+            whiteNoise.start();
+        }
+
+        // Play climbing rope grab sound effect
+        function playClimbSound() {
+            if (!audioCtx || isAudioCut) return;
+            try {
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(140 + Math.random() * 35, now);
+                osc.frequency.exponentialRampToValueAtTime(35, now + 0.12);
+
+                gain.gain.setValueAtTime(0.35, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.12);
+            } catch (e) {}
+        }
+
+        // Dry impact hit sound when the job application appears
+        function playSlamSound() {
+            if (!audioCtx) return;
+            try {
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(18, now + 0.3);
+
+                gain.gain.setValueAtTime(0.95, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } catch (e) {}
+        }
+
+        // Hard stop all ambient audio
+        function stopAudioInstantly() {
+            isAudioCut = true;
+            if (audioCtx) {
+                try {
+                    audioCtx.suspend();
+                } catch (e) {}
+            }
+        }
+
+        // --- THREE.JS 3D ENGINE ---
+        let scene, camera, renderer;
+        let caveTunnel, centralRope, particles, waterDrops;
+        let headLight;
+        let animatedLanterns = [];
+
+        let elapsedTime = 0;
+        let gameActive = false;
+        let cutTriggered = false;
+
+        let startDepth = 450;
+        let currentDepth = 450;
+
+        // First Person Controls state
+        let isPointerLocked = false;
+        let pitch = 0;
+        let yaw = 0;
+        const keys = {};
+        let isMouseDown = false;
+
+        // Procedural Rocky Texture Generator
+        function createProceduralCaveTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#141212';
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Rock grain noise
+            for (let i = 0; i < 22000; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const val = Math.floor(Math.random() * 55 + 10);
+                ctx.fillStyle = `rgb(${val},${val},${val})`;
+                ctx.fillRect(x, y, Math.random() * 3 + 1, Math.random() * 3 + 1);
+            }
+
+            // Dark fissure lines
+            ctx.strokeStyle = '#050404';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 45; i++) {
+                ctx.beginPath();
+                ctx.moveTo(Math.random() * 512, Math.random() * 512);
+                ctx.lineTo(Math.random() * 512, Math.random() * 512);
+                ctx.stroke();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(5, 40);
+            return texture;
+        }
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.065);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 0);
+            camera.rotation.order = 'YXZ'; // FPS Rotation order
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // 1. Vertical Cave Shaft Cylinder
+            const caveGeo = new THREE.CylinderGeometry(3.6, 3.6, 500, 32, 200, true);
+            const caveMat = new THREE.MeshStandardMaterial({
+                map: createProceduralCaveTexture(),
+                side: THREE.BackSide,
+                roughness: 0.95,
+                metalness: 0.05
+            });
+            caveTunnel = new THREE.Mesh(caveGeo, caveMat);
+            scene.add(caveTunnel);
+
+            // 2. Central Climbing Rope with Knots
+            const ropeGeo = new THREE.CylinderGeometry(0.045, 0.045, 500, 12, 1000);
+            const ropeMat = new THREE.MeshStandardMaterial({ color: 0x8a633c, roughness: 0.9 });
+            centralRope = new THREE.Mesh(ropeGeo, ropeMat);
+            centralRope.position.set(0, 200, -0.38); // Directly in front of player
+            scene.add(centralRope);
+
+            const knotGeo = new THREE.TorusGeometry(0.06, 0.03, 8, 12);
+            for (let y = -20; y < 400; y += 2.2) {
+                const knot = new THREE.Mesh(knotGeo, ropeMat);
+                knot.position.set(0, y, -0.38);
+                knot.rotation.x = Math.PI / 2;
+                scene.add(knot);
+            }
+
+            // 3. Wall Decorations (Outcrops, Wooden Beams, Pitons, Lanterns)
+            const rockGeo = new THREE.DodecahedronGeometry(0.45, 1);
+            const rockMat = new THREE.MeshStandardMaterial({ color: 0x222020, roughness: 0.95 });
+
+            const woodGeo = new THREE.BoxGeometry(0.2, 0.2, 3.2);
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x3d2716, roughness: 0.8 });
+
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.8, roughness: 0.3 });
+            const pitonGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.6, 8);
+
+            for (let y = -10; y < 350; y += 1.8) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 3.4;
+                const rx = Math.cos(angle) * radius;
+                const rz = Math.sin(angle) * radius;
+
+                // Stalactites / Rocks
+                const rock = new THREE.Mesh(rockGeo, rockMat);
+                rock.position.set(rx, y, rz);
+                rock.scale.set(1 + Math.random() * 1.2, 1 + Math.random() * 2.0, 1 + Math.random() * 1.2);
+                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+                scene.add(rock);
+
+                // Support Beams
+                if (Math.floor(y) % 15 === 0 && y > 0) {
+                    const beam = new THREE.Mesh(woodGeo, woodMat);
+                    beam.position.set(0, y, 0);
+                    beam.rotation.y = angle;
+                    scene.add(beam);
+                }
+
+                // Metal Pitons
+                if (Math.random() < 0.4) {
+                    const piton = new THREE.Mesh(pitonGeo, metalMat);
+                    piton.position.set(rx * 0.92, y + 0.2, rz * 0.92);
+                    piton.rotation.set(Math.PI / 2, angle, 0);
+                    scene.add(piton);
+                }
+
+                // Hanging Warm Oil Lanterns
+                if (Math.floor(y) % 12 === 0 && y > -5) {
+                    const lanternGroup = new THREE.Group();
+                    const lanternBodyGeo = new THREE.CylinderGeometry(0.12, 0.15, 0.35, 8);
+                    const lanternMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9 });
+                    const lanternMesh = new THREE.Mesh(lanternBodyGeo, lanternMat);
+                    lanternGroup.add(lanternMesh);
+
+                    lanternGroup.position.set(rx * 0.88, y, rz * 0.88);
+                    scene.add(lanternGroup);
+
+                    const warmLight = new THREE.PointLight(0xffa533, 2.8, 14);
+                    warmLight.position.set(rx * 0.85, y, rz * 0.85);
+                    scene.add(warmLight);
+
+                    animatedLanterns.push({
+                        light: warmLight,
+                        baseIntensity: 2.8 + Math.random() * 0.6,
+                        speed: 8 + Math.random() * 10
+                    });
+                }
+            }
+
+            // 4. Dust Particles & Water Drops
+            const particleGeo = new THREE.BufferGeometry();
+            const particleCount = 600;
+            const posArray = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                posArray[i] = (Math.random() - 0.5) * 6.5;
+                posArray[i + 1] = Math.random() * 200 - 20;
+                posArray[i + 2] = (Math.random() - 0.5) * 6.5;
+            }
+
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particleMat = new THREE.PointsMaterial({
+                size: 0.035,
+                color: 0xc2a688,
+                transparent: true,
+                opacity: 0.45
+            });
+
+            particles = new THREE.Points(particleGeo, particleMat);
+            scene.add(particles);
+
+            // Water Droplets
+            const dropGeo = new THREE.BufferGeometry();
+            const dropCount = 150;
+            const dropPos = new Float32Array(dropCount * 3);
+
+            for (let i = 0; i < dropCount * 3; i += 3) {
+                dropPos[i] = (Math.random() - 0.5) * 5;
+                dropPos[i + 1] = Math.random() * 100;
+                dropPos[i + 2] = (Math.random() - 0.5) * 5;
+            }
+
+            dropGeo.setAttribute('position', new THREE.BufferAttribute(dropPos, 3));
+            const dropMat = new THREE.PointsMaterial({
+                size: 0.04,
+                color: 0x77bbff,
+                transparent: true,
+                opacity: 0.7
+            });
+
+            waterDrops = new THREE.Points(dropGeo, dropMat);
+            scene.add(waterDrops);
+
+            // 5. Headlamp Spotlight & Ambient Light
+            headLight = new THREE.SpotLight(0xfff5db, 4.5);
+            headLight.angle = Math.PI / 4.2;
+            headLight.penumbra = 0.4;
+            headLight.decay = 1.6;
+            headLight.distance = 25;
+            camera.add(headLight);
+            headLight.target = camera;
+            headLight.position.set(0, 0, 0.1);
+
+            const ambientLight = new THREE.AmbientLight(0x0a0a0a, 0.25);
+            scene.add(ambientLight);
+            scene.add(camera);
+
+            setupPointerLock();
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function setupPointerLock() {
+            const container = document.getElementById('canvas-container');
+
+            container.addEventListener('click', () => {
+                if (gameActive && !cutTriggered) {
+                    document.body.requestPointerLock();
+                }
+            });
+
+            document.addEventListener('mousedown', (e) => {
+                if (e.button === 0) isMouseDown = true;
+            });
+            document.addEventListener('mouseup', (e) => {
+                if (e.button === 0) isMouseDown = false;
+            });
+
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = (document.pointerLockElement === document.body);
+                const prompt = document.getElementById('pointer-prompt');
+                if (gameActive && !isPointerLocked && !cutTriggered) {
+                    prompt.style.opacity = '1';
+                } else {
+                    prompt.style.opacity = '0';
+                }
+            });
+
+            // FPS Pointer Lock Camera
+            document.addEventListener('mousemove', (e) => {
+                if (!isPointerLocked || !gameActive || cutTriggered) return;
+
+                const sensitivity = 0.0022;
+                yaw -= e.movementX * sensitivity;
+                pitch -= e.movementY * sensitivity;
+
+                pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
+
+                camera.rotation.x = pitch;
+                camera.rotation.y = yaw;
+            });
+
+            window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+            window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // EXACT 10-SECOND CUT TRIGGER & INFOJOBS REDIRECT
+        function triggerInstantCut() {
+            cutTriggered = true;
+            gameActive = false;
+
+            // Release Pointer Lock immediately
+            if (document.exitPointerLock) {
+                document.exitPointerLock();
+            }
+
+            // Stop audio instantly and play slam hit
+            stopAudioInstantly();
+            playSlamSound();
+
+            // INSTANT CUT: Hide 3D Canvas and HUD elements without transition
+            document.getElementById('canvas-container').style.display = 'none';
+            document.getElementById('game-hud').style.display = 'none';
+            document.getElementById('crosshair').style.display = 'none';
+            document.getElementById('pointer-prompt').style.display = 'none';
+
+            // INSTANT CUT: Display Solicitud de Empleo document on pure white background
+            const jobScreen = document.getElementById('job-screen');
+            jobScreen.style.display = 'flex';
+
+            // Trigger slow zoom animation on wrapper
+            const zoomWrapper = document.getElementById('zoom-wrapper');
+            zoomWrapper.classList.add('slow-zoom-active');
+
+            // AUTOMATIC REDIRECTION TO INFOJOBS AFTER EXACTLY 5 SECONDS (15s total)
+            setTimeout(() => {
+                window.location.href = "https://www.infojobs.net/";
+            }, 5000);
+        }
+
+        let lastTime = performance.now();
+        let climbStepCooldown = 0;
+
+        function animate(currentTime) {
+            requestAnimationFrame(animate);
+
+            const delta = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            if (gameActive && !cutTriggered) {
+                elapsedTime += delta;
+
+                // EXACT 10 SECONDS TIMING CHECK
+                if (elapsedTime >= 10.0) {
+                    triggerInstantCut();
+                    return;
+                }
+
+                // Climbing movement (W, Space, Up Arrow, Mouse Click Hold)
+                let isClimbing = false;
+                const climbSpeed = 3.6 * delta;
+
+                if (keys['KeyW'] || keys['ArrowUp'] || keys['Space'] || isMouseDown) {
+                    camera.position.y += climbSpeed;
+                    isClimbing = true;
+                }
+                if (keys['KeyS'] || keys['ArrowDown']) {
+                    camera.position.y -= climbSpeed * 0.5;
+                }
+
+                // Update HUD Altimeter
+                currentDepth = Math.max(0, Math.floor(startDepth - (camera.position.y * 2.2)));
+                document.getElementById('hud-depth').innerText = currentDepth;
+
+                // Simulate slight grip strain on HUD
+                const gripPct = Math.max(88, Math.floor(98 - (elapsedTime * 0.8)));
+                document.getElementById('hud-grip-pct').innerText = gripPct + '%';
+                document.getElementById('hud-grip-bar').style.width = gripPct + '%';
+
+                // Keep camera locked in vertical climbing alignment with rope
+                camera.position.x = 0;
+                camera.position.z = 0;
+
+                // Climbing sound feedback
+                if (isClimbing) {
+                    climbStepCooldown -= delta;
+                    if (climbStepCooldown <= 0) {
+                        playClimbSound();
+                        climbStepCooldown = 0.32;
+                    }
+                }
+
+                // Lantern flickering
+                const timeSec = currentTime * 0.001;
+                animatedLanterns.forEach(lantern => {
+                    lantern.light.intensity = lantern.baseIntensity + Math.sin(timeSec * lantern.speed) * 0.45 + (Math.random() - 0.5) * 0.2;
+                });
+
+                // Headlight intensity wobble
+                headLight.intensity = 4.5 + (Math.random() - 0.5) * 0.3;
+
+                // Dripping water droplets animation
+                if (waterDrops) {
+                    const positions = waterDrops.geometry.attributes.position.array;
+                    for (let i = 1; i < positions.length; i += 3) {
+                        positions[i] -= delta * 12;
+                        if (positions[i] < camera.position.y - 10) {
+                            positions[i] = camera.position.y + 20;
+                        }
+                    }
+                    waterDrops.geometry.attributes.position.needsUpdate = true;
+                }
+
+                renderer.render(scene, camera);
+            }
+        }
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            initAudio();
+
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('crosshair').style.opacity = '1';
+            document.getElementById('game-hud').style.opacity = '1';
+
+            document.body.requestPointerLock();
+
+            gameActive = true;
+            elapsedTime = 0;
+            lastTime = performance.now();
+        });
+
+        window.onload = () => {
+            init3D();
+            animate(0);
+        };
+    </script>
+</body>
+</html>

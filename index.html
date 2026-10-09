@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Los mayores spukis</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #78BBCB;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        /* Cabecera */
+        .cabecera {
+            padding: 30px 20px;
+        }
+
+        h1 {
+            margin: 0 0 25px;
+            font-size: clamp(24px, 4vw, 38px);
+            overflow-wrap: anywhere;
+        }
+
+        .gif {
+            width: 80px;
+            height: auto;
+            display: block;
+            margin: 0 auto 20px;
+        }
+
+        .emoji {
+            display: block;
+            width: 450px;
+            max-width: 90%;
+            height: auto;
+            margin: 20px auto;
+        }
+
+        /* Separadores */
+        hr {
+            height: 8px;
+            width: 100%;
+            margin: 0;
+            border: none;
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.55);
+        }
+
+        /* Secciones de los cinco vídeos */
+        .seccion {
+            min-height: 100vh;
+            padding: 45px 20px 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .seccion h1 {
+            color: #FF0000;
+            margin-bottom: 30px;
+        }
+
+        .marco-video {
+            width: 100%;
+            max-width: 810px;
+            padding: 5px;
+            border: 4px solid black;
+            border-radius: 12px;
+            background-color: black;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        video {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        /* Colores de las secciones */
+        .top5 {
+            background-color: #C7EDF5;
+        }
+
+        .top4 {
+            background-color: #71DDF3;
+        }
+
+        .top3 {
+            background-color: #4ADBF8;
+        }
+
+        .top2 {
+            background-color: #38CDEB;
+        }
+
+        .top1 {
+            background-color: #0096B4;
+            min-height: auto; /* Se ajusta a la altura exacta del contenido */
+            padding-bottom: 50px;
+        }
+
+        .separador-1 {
+            background-color: greenyellow;
+        }
+
+        .separador-2 {
+            background-color: rgba(255, 137, 3, 0.8);
+        }
+
+        .separador-3 {
+            background-color: rgb(219, 0, 128);
+        }
+
+        .separador-4 {
+            background-color: rgb(218, 71, 71);
+        }
+
+        /* Contenedor del cartel pegado al marco del último vídeo */
+        .contenedor-cartel-video {
+            width: 100%;
+            max-width: 810px;
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        .cartel-juego {
+            display: inline-block;
+            background-color: #FF0000;
+            color: #FFFFFF;
+            padding: 14px 22px;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            border: 2px solid #FFFFFF;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        .cartel-juego:hover {
+            background-color: #D60000;
+            transform: scale(1.05);
+        }
+
+        /* Ajustes para móviles */
+        @media (max-width: 600px) {
+            .cabecera {
+                padding: 25px 15px;
+            }
+
+            .seccion {
+                min-height: auto;
+                padding: 40px 15px 50px;
+            }
+
+            .marco-video {
+                border-width: 3px;
+            }
+
+            .cartel-juego {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="cabecera">
+        <h1>Hello Guys Today We Have A List of Top 5 Spooky Moments</h1>
+
+        <img src="toaster.gif" alt="GIF de una tostadora" class="gif">
+
+        <img
+            src="Emoji_malvado.png"
+            alt="Cara malvada"
+            class="emoji">
+    </header>
+
+    <hr>
+
+    <section class="seccion top5">
+        <h1>Top 5 Spooky Moment</h1>
+
+        <div class="marco-video">
+            <video controls preload="metadata">
+                <source src="top5.mp4" type="video/mp4">
+                Tu navegador no puede reproducir este vídeo.
+            </video>
+        </div>
+    </section>
+
+    <hr class="separador-1">
+
+    <section class="seccion top4">
+        <h1>Top 4 Spooky Moment</h1>
+
+        <div class="marco-video">
+            <video controls preload="metadata">
+                <source src="top_4.mp4" type="video/mp4">
+                Tu navegador no puede reproducir este vídeo.
+            </video>
+        </div>
+    </section>
+
+    <hr class="separador-2">
+
+    <section class="seccion top3">
+        <h1>Top 3 Spooky Moment</h1>
+
+        <div class="marco-video">
+            <video controls preload="metadata">
+                <source src="Top_3.mp4" type="video/mp4">
+              
+            </video>
+        </div>
+    </section>
+
+    <hr class="separador-3">
+
+    <section class="seccion top2">
+        <h1>Top 2 Spooky Moment</h1>
+
+        <div class="marco-video">
+            <video controls preload="metadata">
+                <source src="Top_2.mp4" type="video/mp4">
+            
+            </video>
+        </div>
+    </section>
+
+    <hr class="separador-4">
+
+    <section class="seccion top1">
+        <h1>Top 1 Spooky Moment</h1>
+
+        <div class="marco-video">
+            <video controls preload="metadata">
+                <source src="Top_1.mp4" type="video/mp4">
+              
+            </video>
+        </div>
+
+        <!-- Cartel estático pegado justo a la esquina inferior izquierda del último vídeo -->
+        <div class="contenedor-cartel-video">
+            <a href="Juego_final.html" class="cartel-juego">
+                Clica aquí para ir al juego final
+            </a>
+        </div>
+    </section>
+
+</body>
+</html>
